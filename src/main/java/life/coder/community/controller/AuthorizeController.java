@@ -10,7 +10,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.util.UUID;
 
 @Controller
@@ -27,7 +30,7 @@ public class AuthorizeController {
     @Autowired
     private UserMapper userMapper;
     @GetMapping("/callback")
-    public String callback(@RequestParam(name = "code") String code, @RequestParam(name = "state") String state, HttpServletRequest request) {
+    public String callback(@RequestParam(name = "code") String code, @RequestParam(name = "state") String state, HttpServletRequest request, HttpServletResponse response) {
         AccessTokenDTO accessTokenDTO = new AccessTokenDTO();
         accessTokenDTO.setClient_id(clientId);
         accessTokenDTO.setClient_secret(clientSecret);
@@ -38,15 +41,18 @@ public class AuthorizeController {
         GitHubUser gitHubUser = githubProvider.getUser(accessToken);
         System.out.println(gitHubUser.getLogin());
         System.out.println("---------------->"+gitHubUser.getId());
-        if(gitHubUser!=null){
+        if(gitHubUser!=null&&gitHubUser.getId()!=null){
             User user=new User();
-            user.setToken(UUID.randomUUID().toString());
+            String token = UUID.randomUUID().toString();
+            user.setToken(token);
             user.setName(gitHubUser.getLogin());
             user.setAccountId(String.valueOf(gitHubUser.getId()));
             user.setGmtCreate(System.currentTimeMillis());
             user.setGmtModefied(user.getGmtCreate());
+            user.setAvatarUrl(gitHubUser.getAvatarUrl());
             userMapper.insert(user);
-            request.getSession().setAttribute("user",gitHubUser);
+            //request.getSession().setAttribute("user",gitHubUser);
+            response.addCookie(new Cookie("token",token));
             return "redirect:/";
         }else {
             return "redirect:/";
